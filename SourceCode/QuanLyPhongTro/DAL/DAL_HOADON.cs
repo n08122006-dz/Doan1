@@ -1,0 +1,114 @@
+﻿using DTO;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL
+{
+    public class DAL_HOADON:DataProvider
+    {
+        public static DataTable LayDanhSachHoaDon()
+        {
+            string query = @"SELECT * FROM VW__HOADON__GetList";
+            return ExecuteQuery(query);
+        }
+
+        public static int ThanhToanHoaDon(DTO_HOADON hoaDon)
+        {
+            string query = @"EXEC PROC__HOADON__PAY
+                             @MAHOADON = @@MAHOADON";
+
+            return ExecuteNonQuery(query, new object[]{hoaDon.MaHoaDon});
+        }
+
+        public static int ThemHoaDon(DTO_HOADON hoaDon, DTO_HOADON_DIENNUOC hoaDonDienNuoc)
+        {
+            string query = @"EXEC PROC__HOADON__INSERT
+                             @#MAPHG = @@MAPHG ,
+                             @#THANG = @@THANG ,
+                             @#NAM = @@NAM ,
+                             @#SODIEN = @@SODIEN ,
+                             @#SONUOC = @@SONUOC";
+
+            object[] obj = new object[]
+            {
+                hoaDon.MaPhong,
+                hoaDon.Thang,
+                hoaDon.Nam,
+                hoaDonDienNuoc.SoDien,
+                hoaDonDienNuoc.SoNuoc
+            };
+
+            return ExecuteNonQuery(query, obj);
+        }
+
+
+        public static int XoaHoaDon(DTO_HOADON hoaDon)
+        {
+            string query = @"EXEC PROC__HOADON__DELETE @MAHOADON = @@MAHD";
+            return ExecuteNonQuery(query, new object[]{hoaDon.MaHoaDon});
+        }
+
+        public static object PhongDaGhiHoaDon(DTO_HOADON hoaDon)
+        {
+            string query = @"EXEC PROC__HOADON__PhongDaGhiHoaDon
+                             @MAPHG = @@MAPHG ,
+                             @THANG = @@THANG ,
+                             @NAM = @@NAM";
+
+            object[] obj = new object[]
+            {
+                hoaDon.MaPhong,
+                hoaDon.Thang,
+                hoaDon.Nam
+            };
+
+            return ExecuteScalar(query, obj);
+        }
+        public static DataTable LayThongKeDoanhThu()
+        {
+            string query = @"
+    SELECT
+        HD.THANG,
+
+        SUM
+        (
+            HD.TIENPHONG
+
+            + ISNULL(DN.SODIEN * DN.GIADIEN, 0)
+
+            + ISNULL(DN.SONUOC * DN.GIANUOC, 0)
+
+            + ISNULL(DV.TIENDV, 0)
+        )
+
+        AS DOANHTHU
+
+    FROM HOADON HD
+
+    LEFT JOIN HOADON_DIENNUOC DN
+        ON HD.MAHOADON = DN.MAHOADON
+
+    LEFT JOIN
+    (
+        SELECT
+            MAHOADON,
+            SUM(GIADICHVU) AS TIENDV
+        FROM HOADON_DICHVU
+        GROUP BY MAHOADON
+    ) DV
+
+        ON HD.MAHOADON = DV.MAHOADON
+
+    GROUP BY HD.THANG
+
+    ORDER BY HD.THANG";
+
+            return ExecuteQuery(query);
+        }
+    }
+}
